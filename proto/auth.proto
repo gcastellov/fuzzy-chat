@@ -1,0 +1,43 @@
+syntax = "proto3";
+package auth;
+
+service AuthService {
+    rpc Login (LoginRequest) returns (LoginResponse);
+    rpc Logout (LogoutRequest) returns (LogoutResponse);
+    rpc Ping (PingRequest) returns (PingResponse);
+}
+
+enum ComponentType {
+    Controller = 0;
+    Proxy = 1;
+    Client = 2;
+}
+
+message LoginRequest {
+    string uid = 1;
+    string pwd = 2;
+    string on_ip = 3;    
+    uint32 on_port = 4;
+    ComponentType component_type = 5;
+}
+
+message LoginResponse {
+    string access_key = 1;
+    string message = 2;
+}
+
+message LogoutRequest {
+    string access_key = 1;
+}
+
+message LogoutResponse {
+}
+
+message PingRequest {
+    string access_key = 1;
+}
+
+message PingResponse {
+    string status = 1;
+    int64 timestamp = 2;
+}

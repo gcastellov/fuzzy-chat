@@ -1,0 +1,43 @@
+syntax = "proto3";
+package route;
+
+service RouteService {
+    rpc Initialize(InitRequest) returns (InitResponse);
+    rpc Route(RouteRequest) returns (RouteResponse);
+    rpc Redeem(RedeemRequest) returns (RedeemResponse);
+}
+
+message InitRequest {
+    string access_key = 1;
+    string to = 3;
+};
+
+message RouteRequest {
+    string access_key = 1;
+    string conversation_id = 2;
+};
+
+message RedeemRequest {
+    string access_key = 1;
+    string conversation_id = 2;
+    string nonce = 3;
+}
+
+message InitResponse {
+    string conversation_id = 1;
+}
+
+message RouteResponse {
+    string ip_address = 1;
+    uint32 port_number = 2;
+    string nonce = 3;
+    bool end_route = 4;
+}
+
+message RedeemResponse {
+    optional SourceInfo source_info = 1;
+}
+
+message SourceInfo {
+    string from = 1;
+}

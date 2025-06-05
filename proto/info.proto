@@ -1,0 +1,17 @@
+syntax = "proto3";
+package info;
+
+service InfoService {
+    rpc Status(StatusRequest) returns (StatusResponse);
+}
+
+message StatusRequest {
+    string access_key = 1;
+}
+
+message StatusResponse {
+    string version = 1;
+    uint32 connected_proxies = 2;
+    uint32 connected_clients = 3;
+    uint32 connected_controllers = 4;
+}

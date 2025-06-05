@@ -1,0 +1,11 @@
+[env]
+LISTENING_IP="127.0.0.1"
+LISTENING_PORT="4467"
+CONTROLLER_DOMAIN_NAME="localhost"
+CONTROLLER_IP="localhost"
+CONTROLLER_PORT="4455"
+UID="proxy2"
+PWD=".b}H0,&K!0SeBx79"
+LOGS_DIR="logs"
+CERTS_DIR="assets/certs"
+LOG_LEVEL="debug"

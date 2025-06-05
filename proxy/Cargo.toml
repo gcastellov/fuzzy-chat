@@ -1,0 +1,26 @@
+[package]
+name = "proxy"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+crosscutting = { path = "../crosscutting" }
+authorization = { path = "../authorization" }
+routing = { path = "../routing" }
+tokio = { version = "1.36.0", features = ["full"] }
+tonic = { version = "0.13.0", features = ["tls-ring", "prost"] }
+uuid = { version = "1.6", features = ["v4"] }
+prost = "0.13.0"
+tokio-rustls = "0.24.1"
+rustls = "0.21.7"
+rustls-pemfile = "1.0.3"
+protoc-rust = "2.28.0"
+chrono = "0.4"
+log = "0.4.27"
+tokio-util = "0.7.15"
+mockall = "0.13.0"
+
+
+[build-dependencies]
+tonic-build = { version ="0.13.0", features = ["prost"] }
+protoc-rust = "2"

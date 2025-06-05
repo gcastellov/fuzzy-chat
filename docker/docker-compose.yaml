@@ -1,0 +1,236 @@
+version: '3'
+
+volumes:
+  data:
+
+networks:
+  net:
+    driver: bridge
+
+services:
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - 6379:6379
+    networks:
+      - net
+
+  controller:
+    image: rs-controller
+    container_name: controller
+    depends_on:
+      - redis
+    build: 
+      context: ..\
+      dockerfile: .\docker\Controller-Dockerfile
+    ports:
+      - 4455:4455
+    environment:
+      - LISTENING_IP=127.0.0.1
+      - LISTENING_PORT=4455
+      - CONTROLLER_IP=controller
+      - CONTROLLER_PORT=8080
+      - CONTROLLER_DOMAIN_NAME=controller
+      - UID=controller1
+      - PWD=L.KD<FCjkSA6AEg@
+      - LOGS_DIR=/data/logs
+      - CERTS_DIR=/data/certs
+      - MEMBERS_CSV_FILE=/data/members.csv
+      - LOG_LEVEL=info
+      - REPOSITORY=1
+      - REDIS_URL=redis://redis/
+    volumes:
+      - /d/data:/data
+    networks:
+      - net
+
+  proxy-one:
+    image: rs-proxy
+    container_name: proxy-one
+    build: 
+      context: ..\
+      dockerfile: .\docker\Proxy-Dockerfile
+    restart: always
+    depends_on:
+      - controller
+    ports:
+      - 4466:4466
+    environment:
+      - LISTENING_IP=proxy-one
+      - LISTENING_PORT=4466
+      - CONTROLLER_IP=controller
+      - CONTROLLER_PORT=4455
+      - CONTROLLER_DOMAIN_NAME=controller      
+      - UID=proxy1
+      - PWD=igqX$$F$$MOE@GK1S6
+      - LOGS_DIR=/data/logs
+      - CERTS_DIR=/data/certs
+      - LOG_LEVEL=info
+    volumes:
+      - /d/data:/data
+    networks:
+      - net
+
+  proxy-two:
+    image: rs-proxy
+    container_name: proxy-two
+    build: 
+      context: ..\
+      dockerfile: .\docker\Proxy-Dockerfile
+    restart: always
+    depends_on:
+      - controller
+    ports:
+      - 4467:4467
+    environment:
+      - LISTENING_IP=proxy-two
+      - LISTENING_PORT=4467
+      - CONTROLLER_IP=controller
+      - CONTROLLER_PORT=4455
+      - CONTROLLER_DOMAIN_NAME=controller
+      - UID=proxy2
+      - PWD=.b}H0,&K!0SeBx79
+      - LOGS_DIR=/data/logs
+      - CERTS_DIR=/data/certs
+      - LOG_LEVEL=info
+    volumes:
+      - /d/data:/data
+    networks:
+      - net
+
+  proxy-three:
+    image: rs-proxy
+    container_name: proxy-three
+    build: 
+      context: ..\
+      dockerfile: .\docker\Proxy-Dockerfile
+    restart: always
+    depends_on:
+      - controller
+    ports:
+      - 4468:4468
+    environment:
+      - LISTENING_IP=proxy-three
+      - LISTENING_PORT=4468
+      - CONTROLLER_IP=controller
+      - CONTROLLER_PORT=4455
+      - CONTROLLER_DOMAIN_NAME=controller
+      - UID=proxy3
+      - PWD=iW_%-4m|Oc-v6:@
+      - LOGS_DIR=/data/logs
+      - CERTS_DIR=/data/certs
+      - LOG_LEVEL=info
+    volumes:
+      - /d/data:/data
+    networks:
+      - net      
+
+  proxy-four:
+    image: rs-proxy
+    container_name: proxy-four
+    build: 
+      context: ..\
+      dockerfile: .\docker\Proxy-Dockerfile
+    restart: always
+    depends_on:
+      - controller
+    ports:
+      - 4469:4469
+    environment:
+      - LISTENING_IP=proxy-four
+      - LISTENING_PORT=4469
+      - CONTROLLER_IP=controller
+      - CONTROLLER_PORT=4455
+      - CONTROLLER_DOMAIN_NAME=controller
+      - UID=proxy4
+      - PWD=GR|Ajk{*2}M{D2,P
+      - LOGS_DIR=/data/logs
+      - CERTS_DIR=/data/certs
+      - LOG_LEVEL=info
+    volumes:
+      - /d/data:/data
+    networks:
+      - net
+
+  client-one:
+    image: rs-client
+    container_name: client-one
+    build: 
+      context: ..\
+      dockerfile: .\docker\Client-Dockerfile
+    restart: always
+    depends_on:
+      - controller
+    ports:
+      - 5500:5500
+    environment:
+      - LISTENING_IP=client-one
+      - LISTENING_PORT=5500
+      - CONTROLLER_IP=controller
+      - CONTROLLER_PORT=4455
+      - CONTROLLER_DOMAIN_NAME=controller
+      - UID=client1
+      - PWD=338!Ac],U*[>GR9G
+      - LOGS_DIR=/data/logs
+      - CERTS_DIR=/data/certs
+      - LOG_LEVEL=info
+    volumes:
+      - /d/data:/data
+    networks:
+      - net
+
+  client-two:
+    image: rs-client
+    container_name: client-two
+    build: 
+      context: ..\
+      dockerfile: .\docker\Client-Dockerfile
+    restart: always
+    depends_on:
+      - controller
+    ports:
+      - 5501:5501
+    environment:
+      - LISTENING_IP=client-two
+      - LISTENING_PORT=5501
+      - CONTROLLER_IP=controller
+      - CONTROLLER_PORT=4455
+      - CONTROLLER_DOMAIN_NAME=controller
+      - UID=client2
+      - PWD=U*?G&zYZoa9Buz1L
+      - LOGS_DIR=/data/logs
+      - CERTS_DIR=/data/certs
+      - LOG_LEVEL=info
+    volumes:
+      - /d/data:/data
+    networks:
+      - net
+
+  client-three:
+    image: rs-client
+    container_name: client-three
+    build: 
+      context: ..\
+      dockerfile: .\docker\Client-Dockerfile
+    restart: always
+    depends_on:
+      - controller
+    ports:
+      - 5502:5502
+    environment:
+      - LISTENING_IP=client-three
+      - LISTENING_PORT=5502
+      - CONTROLLER_IP=controller
+      - CONTROLLER_PORT=4455
+      - CONTROLLER_DOMAIN_NAME=controller
+      - UID=client3
+      - PWD=2$,?@m<^50j0<La
+      - LOGS_DIR=/data/logs
+      - CERTS_DIR=/data/certs
+      - LOG_LEVEL=info
+    volumes:
+      - /d/data:/data
+    networks:
+      - net      

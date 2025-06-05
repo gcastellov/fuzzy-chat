@@ -1,0 +1,12 @@
+[env]
+LISTENING_IP="127.0.0.1"
+LISTENING_PORT="5566"
+CONTROLLER_DOMAIN_NAME="controller"
+CONTROLLER_IP="controller"
+CONTROLLER_PORT="4455"
+UID="client3"
+PWD="2$,?@m<^50j0<La"
+DATA_DIR="d:\\data"
+LOGS_DIR="logs"
+CERTS_DIR="D:\\data\\certs"
+LOG_LEVEL="debug"

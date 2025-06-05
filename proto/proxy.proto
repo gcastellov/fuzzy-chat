@@ -1,0 +1,23 @@
+syntax = "proto3";
+package proxy;
+
+service ProxyService {
+  rpc ExecuteCommand(CommandRequest) returns (CommandResponse);
+}
+
+enum CommandType {
+  Unknown = 0;
+  Send = 1;
+  Status = 2;
+}
+
+message CommandRequest {
+  string conversation_id = 1;
+  string nonce = 2;
+  CommandType command = 3;
+  optional bytes content = 4;
+}
+
+message CommandResponse {
+  optional string result = 1;
+}

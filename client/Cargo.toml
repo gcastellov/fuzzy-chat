@@ -1,0 +1,22 @@
+[package]
+name = "client"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+crosscutting = { path = "../crosscutting" }
+authorization = { path = "../authorization" }
+routing = { path = "../routing" }
+tokio = { version = "1.36.0", features = ["full"] }
+tonic = { version = "0.13.0", features = ["tls-ring", "prost"] }
+prost = "0.13.0"
+tokio-rustls = "0.24.1"
+rustls = "0.21.7"
+rustls-pemfile = "1.0.3"
+protoc-rust = "2.28.0"
+log = "0.4.27"
+tokio-util = "0.7.15"
+
+[build-dependencies]
+tonic-build = { version ="0.13.0", features = ["prost"] }
+protoc-rust = "2"

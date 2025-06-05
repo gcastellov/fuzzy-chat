@@ -1,0 +1,16 @@
+[package]
+name = "crosscutting"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio = { version = "1.36.0", features = ["full"] }
+log = "0.4.27"
+fern = "0.7.1"
+humantime = "2.2.0"
+tonic = { version = "0.13.0" }
+hostname = "0.3"
+tower = "0.5.2"
+http = "1.3.1"
+http-body = "1.0.1"
+mockall = "0.13.0"

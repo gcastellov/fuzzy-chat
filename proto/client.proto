@@ -1,0 +1,16 @@
+syntax = "proto3";
+package client;
+
+service LandingService {
+  rpc Receive(TextRequest) returns (TextResponse);
+}
+
+message TextRequest {
+    string conversation_id = 1;
+    string access_key = 2;
+    string nonce = 3;
+    bytes content = 4;
+}
+
+message TextResponse {  
+}
