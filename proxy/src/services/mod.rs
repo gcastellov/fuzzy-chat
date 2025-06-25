@@ -1,7 +1,7 @@
 pub mod proxy_service;
 
 use crate::models::proxy_proto::proxy_service_server::ProxyServiceServer;
-use authorization::auth_client::Authenticator;
+use gateway::auth_client::Authenticator;
 use crosscutting::settings::service;
 use crosscutting::tracing;
 use log::{debug, error};

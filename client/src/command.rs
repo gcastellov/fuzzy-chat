@@ -1,7 +1,7 @@
 use crosscutting::networking;
-use routing::proxy_client::proxy::{CommandResponse, CommandType};
-use routing::proxy_client::{ProxyClientFactory, ProxyFactory};
-use routing::route_client::{RouteClientFactory, RouterFactory};
+use gateway::proxy_client::proxy::{CommandResponse, CommandType};
+use gateway::proxy_client::{ProxyClientFactory, ProxyFactory};
+use gateway::route_client::{RouteClientFactory, RouterFactory};
 use std::error::Error;
 use tonic::Status;
 use tonic::transport::Uri;

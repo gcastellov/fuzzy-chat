@@ -2,8 +2,8 @@ mod clients;
 mod models;
 mod services;
 
-use authorization::auth::start_auth_handler;
-use authorization::auth_client::{AuthClientFactory, AuthenticatorFactory, ClientSession};
+use gateway::auth::start_auth_handler;
+use gateway::auth_client::{AuthClientFactory, AuthenticatorFactory, ClientSession};
 use crosscutting::settings;
 use crosscutting::{Component, ComponentDescriptor};
 use log::{debug, info};

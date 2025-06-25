@@ -9,10 +9,10 @@ use crate::{
     },
     models::info_proto::StatusResponse,
 };
-use authorization::auth_client::Authenticator;
+use gateway::auth_client::Authenticator;
 use crosscutting::ConnectionSettings;
-use routing::proxy_client::{ProxyClientFactory, ProxyFactory, proxy::CommandType};
-use routing::route_client::{RouteClientFactory, RouterFactory};
+use gateway::proxy_client::{ProxyClientFactory, ProxyFactory, proxy::CommandType};
+use gateway::route_client::{RouteClientFactory, RouterFactory};
 
 pub struct ProxyServiceImpl {
     authenticator: Arc<RwLock<Box<dyn Authenticator>>>,
@@ -214,9 +214,10 @@ mod tests {
     };
 
     use super::*;
-    use authorization::auth_client::{ClientSession, MockAuthenticator};
+    use gateway::auth_client::{ClientSession, MockAuthenticator};
     use protoc_rust::Error;
-    use routing::{
+    use gateway::{
+        proxy_client,
         proxy_client::{MockProxy, MockProxyFactory},
         route_client::{
             MockRouter, MockRouterFactory,
@@ -508,7 +509,7 @@ mod tests {
                 )
                 .returning(|_, _, _, _| {
                     Box::pin(async {
-                        Ok(routing::proxy_client::CommandResponse {
+                        Ok(proxy_client::CommandResponse {
                             result: Some("Message sent".to_string()),
                         })
                     })

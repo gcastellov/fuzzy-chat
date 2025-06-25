@@ -1,5 +1,5 @@
 [workspace]
-members = [ "controller", "proxy", "client",  "crosscutting", "authorization", "routing" ]
+members = [ "controller", "proxy", "client",  "crosscutting", "gateway" ]
 resolver = "3"
 
 [workspace.package]

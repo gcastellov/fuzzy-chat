@@ -77,21 +77,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
-name = "authorization"
-version = "1.0.0"
-dependencies = [
- "crosscutting",
- "log",
- "mockall",
- "prost",
- "protoc-rust",
- "tokio",
- "tokio-util",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -220,12 +205,11 @@ dependencies = [
 name = "client"
 version = "1.0.0"
 dependencies = [
- "authorization",
  "crosscutting",
+ "gateway",
  "log",
  "prost",
  "protoc-rust",
- "routing",
  "rustls 0.21.12",
  "rustls-pemfile",
  "tokio",
@@ -431,6 +415,21 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "pin-utils",
+]
+
+[[package]]
+name = "gateway"
+version = "1.0.0"
+dependencies = [
+ "crosscutting",
+ "log",
+ "mockall",
+ "prost",
+ "protoc-rust",
+ "tokio",
+ "tokio-util",
+ "tonic",
+ "tonic-build",
 ]
 
 [[package]]
@@ -1172,14 +1171,13 @@ dependencies = [
 name = "proxy"
 version = "1.0.0"
 dependencies = [
- "authorization",
  "chrono",
  "crosscutting",
+ "gateway",
  "log",
  "mockall",
  "prost",
  "protoc-rust",
- "routing",
  "rustls 0.21.12",
  "rustls-pemfile",
  "tokio",
@@ -1303,19 +1301,6 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "routing"
-version = "1.0.0"
-dependencies = [
- "crosscutting",
- "mockall",
- "prost",
- "protoc-rust",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]

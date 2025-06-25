@@ -5,8 +5,7 @@ edition.workspace = true
 
 [dependencies]
 crosscutting = { path = "../crosscutting" }
-authorization = { path = "../authorization" }
-routing = { path = "../routing" }
+gateway = { path = "../gateway" }
 tokio = { version = "1.36.0", features = ["full"] }
 tonic = { version = "0.13.0", features = ["tls-ring", "prost"] }
 prost = "0.13.0"

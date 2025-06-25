@@ -4,7 +4,7 @@ use crate::models::{
     client_proto::{TextRequest, TextResponse, landing_service_server::LandingService},
 };
 
-use routing::route_client::{RouteClientFactory, RouterFactory};
+use gateway::route_client::{RouteClientFactory, RouterFactory};
 
 pub struct LandingServiceImpl {
     tx: Sender<TextMessage>,
@@ -56,7 +56,7 @@ mod tests {
 
     use super::*;
     use protoc_rust::Error;
-    use routing::route_client::{
+    use gateway::route_client::{
         MockRouter, MockRouterFactory,
         route::{RedeemResponse, SourceInfo},
     };
