@@ -2,10 +2,8 @@ use super::*;
 use crate::models::info_proto::{
     StatusRequest, StatusResponse, info_service_client::InfoServiceClient,
 };
-use crosscutting::{abstractions::GrpcClient, networking, settings};
+use crosscutting::{Component, abstractions::GrpcClient};
 use std::error::Error;
-use std::fs;
-use std::path::PathBuf;
 use tonic::{
     Request,
     transport::{Channel, ClientTlsConfig},
@@ -39,18 +37,14 @@ impl Informer for InfoClient {
 #[async_trait]
 impl GrpcClient for InfoClient {
     async fn initialize(&mut self) -> Result<(), Box<dyn Error>> {
-        let cert_path = PathBuf::from(settings::environment::get_certificates_dir());
-        let cert_path = cert_path.join("ca.crt");
-        let ca_cert = fs::read(cert_path)?;
-
-        let domain_name = settings::service::get_controller_domain_name()?;
+        let controller_settings = Component::Controller.get_connection_settings()?;
         let tls_config = ClientTlsConfig::new()
-            .ca_certificate(tonic::transport::Certificate::from_pem(ca_cert))
-            .domain_name(domain_name);
+            .ca_certificate(tonic::transport::Certificate::from_pem(
+                controller_settings.certificate.clone(),
+            ))
+            .domain_name(controller_settings.domain_name.clone());
 
-        let (ip, port) = settings::service::get_controller_connection_settings()?;
-        let channel_endpoint = networking::to_https_endpoint(&ip, port as u32)?;
-        let channel = Channel::builder(channel_endpoint)
+        let channel = Channel::builder(controller_settings.get_public_endpoint())
             .tls_config(tls_config)?
             .connect()
             .await?;

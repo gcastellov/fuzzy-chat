@@ -1,5 +1,3 @@
-version: '3'
-
 volumes:
   data:
 
@@ -30,13 +28,11 @@ services:
     environment:
       - LISTENING_IP=127.0.0.1
       - LISTENING_PORT=4455
-      - CONTROLLER_IP=controller
-      - CONTROLLER_PORT=8080
-      - CONTROLLER_DOMAIN_NAME=controller
+      - DOMAIN_NAME=controller
       - UID=controller1
       - PWD=L.KD<FCjkSA6AEg@
       - LOGS_DIR=/data/logs
-      - CERTS_DIR=/data/certs
+      - CERTS_DIR=/data/certs/controller
       - MEMBERS_CSV_FILE=/data/members.csv
       - LOG_LEVEL=info
       - REPOSITORY=1
@@ -60,13 +56,15 @@ services:
     environment:
       - LISTENING_IP=proxy-one
       - LISTENING_PORT=4466
+      - DOMAIN_NAME=proxy-one
       - CONTROLLER_IP=controller
       - CONTROLLER_PORT=4455
-      - CONTROLLER_DOMAIN_NAME=controller      
+      - CONTROLLER_DOMAIN_NAME=controller
+      - CONTROLLER_CERT_FILE=/data/certs/controller/ca.crt
       - UID=proxy1
       - PWD=igqX$$F$$MOE@GK1S6
       - LOGS_DIR=/data/logs
-      - CERTS_DIR=/data/certs
+      - CERTS_DIR=/data/certs/proxy-one
       - LOG_LEVEL=info
     volumes:
       - /d/data:/data
@@ -87,13 +85,15 @@ services:
     environment:
       - LISTENING_IP=proxy-two
       - LISTENING_PORT=4467
+      - DOMAIN_NAME=proxy-two
       - CONTROLLER_IP=controller
       - CONTROLLER_PORT=4455
       - CONTROLLER_DOMAIN_NAME=controller
+      - CONTROLLER_CERT_FILE=/data/certs/controller/ca.crt
       - UID=proxy2
       - PWD=.b}H0,&K!0SeBx79
       - LOGS_DIR=/data/logs
-      - CERTS_DIR=/data/certs
+      - CERTS_DIR=/data/certs/proxy-two
       - LOG_LEVEL=info
     volumes:
       - /d/data:/data
@@ -114,13 +114,15 @@ services:
     environment:
       - LISTENING_IP=proxy-three
       - LISTENING_PORT=4468
+      - DOMAIN_NAME=proxy-three
       - CONTROLLER_IP=controller
       - CONTROLLER_PORT=4455
       - CONTROLLER_DOMAIN_NAME=controller
+      - CONTROLLER_CERT_FILE=/data/certs/controller/ca.crt
       - UID=proxy3
       - PWD=iW_%-4m|Oc-v6:@
       - LOGS_DIR=/data/logs
-      - CERTS_DIR=/data/certs
+      - CERTS_DIR=/data/certs/proxy-three
       - LOG_LEVEL=info
     volumes:
       - /d/data:/data
@@ -141,13 +143,15 @@ services:
     environment:
       - LISTENING_IP=proxy-four
       - LISTENING_PORT=4469
+      - DOMAIN_NAME=proxy-four
       - CONTROLLER_IP=controller
       - CONTROLLER_PORT=4455
       - CONTROLLER_DOMAIN_NAME=controller
+      - CONTROLLER_CERT_FILE=/data/certs/controller/ca.crt
       - UID=proxy4
       - PWD=GR|Ajk{*2}M{D2,P
       - LOGS_DIR=/data/logs
-      - CERTS_DIR=/data/certs
+      - CERTS_DIR=/data/certs/proxy-four
       - LOG_LEVEL=info
     volumes:
       - /d/data:/data
@@ -168,13 +172,15 @@ services:
     environment:
       - LISTENING_IP=client-one
       - LISTENING_PORT=5500
+      - DOMAIN_NAME=client-one
       - CONTROLLER_IP=controller
       - CONTROLLER_PORT=4455
       - CONTROLLER_DOMAIN_NAME=controller
+      - CONTROLLER_CERT_FILE=/data/certs/controller/ca.crt
       - UID=client1
       - PWD=338!Ac],U*[>GR9G
       - LOGS_DIR=/data/logs
-      - CERTS_DIR=/data/certs
+      - CERTS_DIR=/data/certs/client-one
       - LOG_LEVEL=info
     volumes:
       - /d/data:/data
@@ -195,13 +201,15 @@ services:
     environment:
       - LISTENING_IP=client-two
       - LISTENING_PORT=5501
+      - DOMAIN_NAME=client-two
       - CONTROLLER_IP=controller
       - CONTROLLER_PORT=4455
       - CONTROLLER_DOMAIN_NAME=controller
+      - CONTROLLER_CERT_FILE=/data/certs/controller/ca.crt
       - UID=client2
       - PWD=U*?G&zYZoa9Buz1L
       - LOGS_DIR=/data/logs
-      - CERTS_DIR=/data/certs
+      - CERTS_DIR=/data/certs/client-two
       - LOG_LEVEL=info
     volumes:
       - /d/data:/data
@@ -222,13 +230,15 @@ services:
     environment:
       - LISTENING_IP=client-three
       - LISTENING_PORT=5502
+      - DOMAIN_NAME=client-three
       - CONTROLLER_IP=controller
       - CONTROLLER_PORT=4455
       - CONTROLLER_DOMAIN_NAME=controller
+      - CONTROLLER_CERT_FILE=/data/certs/controller/ca.crt
       - UID=client3
       - PWD=2$,?@m<^50j0<La
       - LOGS_DIR=/data/logs
-      - CERTS_DIR=/data/certs
+      - CERTS_DIR=/data/certs/client-three
       - LOG_LEVEL=info
     volumes:
       - /d/data:/data

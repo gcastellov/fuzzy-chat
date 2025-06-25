@@ -44,15 +44,25 @@ impl InfoService for InfoServiceImpl {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        models::auth_proto::ComponentType, session::SessionManager, storage::RepositoryType,
-    };
+    use crate::{session::SessionManager, storage::RepositoryType};
+    use crosscutting::{Component, ConnectionSettings};
     use tokio_util::sync::CancellationToken;
 
     const EXPECTED_UID: &str = "L.KD<FCjkSA6AEg@";
     const EXPECTED_IP: &str = "127.0.0.1";
     const EXPECTED_PORT: u16 = 8080;
     const EXPECTED_VERSION: &str = "1.0.0";
+    const EXPECTED_PUBLIC_KEY: &[u8] = b"test_public_key";
+    const EXPECTED_DOMAIN_NAME: &str = "test_domain_name";
+
+    fn get_connection_settings() -> ConnectionSettings {
+        ConnectionSettings {
+            ip: EXPECTED_IP.to_string(),
+            port: EXPECTED_PORT,
+            domain_name: EXPECTED_DOMAIN_NAME.to_string(),
+            certificate: EXPECTED_PUBLIC_KEY.to_vec(),
+        }
+    }
 
     #[tokio::test]
     async fn given_client_session_when_getting_status_then_returns_expected_status() {
@@ -63,11 +73,10 @@ mod tests {
 
         let access_key = session_manager
             .set_session(
-                ComponentType::Client as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Client,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 

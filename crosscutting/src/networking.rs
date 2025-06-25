@@ -2,10 +2,6 @@ use core::net::SocketAddr;
 use std::error::Error;
 use tonic::transport::Uri;
 
-pub fn to_http_endpoint(ip: &str, port: u32) -> Result<Uri, Box<dyn Error>> {
-    to_endpoint("http", ip, port)
-}
-
 pub fn to_https_endpoint(ip: &str, port: u32) -> Result<Uri, Box<dyn Error>> {
     to_endpoint("https", ip, port)
 }

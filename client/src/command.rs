@@ -39,6 +39,8 @@ impl Command {
 struct Route {
     conversation_id: String,
     nonce: String,
+    public_key: Vec<u8>,
+    domain_name: String,
     uri: Uri,
 }
 
@@ -63,7 +65,9 @@ impl Commander {
         content: &[u8],
     ) -> Result<CommandResponse, Box<dyn Error>> {
         let route = self.initialize(to).await?;
-        let mut proxy_client = self.proxy_factory.get_proxy(route.uri);
+        let mut proxy_client =
+            self.proxy_factory
+                .get_proxy(route.uri, route.public_key, route.domain_name);
         proxy_client.initialize().await.map_err(|e| {
             Status::internal(format!("Impossible to initialize proxy client: {}", e))
         })?;
@@ -81,7 +85,9 @@ impl Commander {
 
     pub async fn get_status(&mut self) -> Result<CommandResponse, Box<dyn Error>> {
         let route = self.initialize(&String::default()).await?;
-        let mut proxy_client = self.proxy_factory.get_proxy(route.uri);
+        let mut proxy_client =
+            self.proxy_factory
+                .get_proxy(route.uri, route.public_key, route.domain_name);
         proxy_client.initialize().await.map_err(|e| {
             Status::internal(format!("Impossible to initialize proxy client: {}", e))
         })?;
@@ -107,11 +113,13 @@ impl Commander {
             .get_route(conversation_id.clone(), self.access_key.clone())
             .await?;
         let uri =
-            networking::to_http_endpoint(&route_response.ip_address, route_response.port_number)?;
+            networking::to_https_endpoint(&route_response.ip_address, route_response.port_number)?;
 
         Ok(Route {
             conversation_id: conversation_id.clone(),
             nonce: route_response.nonce,
+            public_key: route_response.public_key,
+            domain_name: route_response.domain_name,
             uri: uri.clone(),
         })
     }

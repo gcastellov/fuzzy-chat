@@ -53,11 +53,14 @@ impl LandingService for LandingServiceImpl {
 
 #[cfg(test)]
 mod tests {
-    
+
     use super::*;
-    use std::io::ErrorKind;
     use protoc_rust::Error;
-    use routing::route_client::{route::{RedeemResponse, SourceInfo}, MockRouter, MockRouterFactory};
+    use routing::route_client::{
+        MockRouter, MockRouterFactory,
+        route::{RedeemResponse, SourceInfo},
+    };
+    use std::io::ErrorKind;
 
     const EXPECTED_ACCESS_KEY: &str = "test_access_key";
     const EXPECTED_NONCE: &str = "test_nonce";
@@ -70,21 +73,19 @@ mod tests {
         let (tx, _rx) = tokio::sync::mpsc::channel(100);
 
         let mut router_factory = MockRouterFactory::new();
-        router_factory
-            .expect_get_router()
-            .returning(||{
-                let mut mock_router = MockRouter::new();
-                mock_router.expect_redeem().returning(|_, _, _| {
-                    Box::pin(async {
-                        Err(Box::<dyn std::error::Error>::from(Error::new(
-                            ErrorKind::Other,
-                            "Something went wrong",
-                        )))
-                    })
-                });
-
-                Box::new(mock_router)
+        router_factory.expect_get_router().returning(|| {
+            let mut mock_router = MockRouter::new();
+            mock_router.expect_redeem().returning(|_, _, _| {
+                Box::pin(async {
+                    Err(Box::<dyn std::error::Error>::from(Error::new(
+                        ErrorKind::Other,
+                        "Something went wrong",
+                    )))
+                })
             });
+
+            Box::new(mock_router)
+        });
 
         let service = LandingServiceImpl {
             tx,
@@ -111,22 +112,20 @@ mod tests {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
 
         let mut router_factory = MockRouterFactory::new();
-        router_factory
-            .expect_get_router()
-            .returning(||{
-                let mut mock_router = MockRouter::new();
-                mock_router.expect_redeem().returning(|_, _, _| {
-                    Box::pin(async {
-                        Ok(RedeemResponse {
-                            source_info: Some(SourceInfo {
-                                from: EXPECTED_SENDER_UID.into(),
-                            })
-                        })
+        router_factory.expect_get_router().returning(|| {
+            let mut mock_router = MockRouter::new();
+            mock_router.expect_redeem().returning(|_, _, _| {
+                Box::pin(async {
+                    Ok(RedeemResponse {
+                        source_info: Some(SourceInfo {
+                            from: EXPECTED_SENDER_UID.into(),
+                        }),
                     })
-                });
-
-                Box::new(mock_router)
+                })
             });
+
+            Box::new(mock_router)
+        });
 
         let service = LandingServiceImpl {
             tx,
@@ -143,10 +142,13 @@ mod tests {
         let response = service.receive(request).await;
         assert!(response.is_ok());
 
-        rx.recv().await.map(|message| {
-            assert_eq!(message.from, EXPECTED_SENDER_UID);
-            assert_eq!(message.to, "myself");
-            assert_eq!(message.content, EXPECTED_MESSAGE);
-        }).expect("Failed to receive message from channel");
+        rx.recv()
+            .await
+            .map(|message| {
+                assert_eq!(message.from, EXPECTED_SENDER_UID);
+                assert_eq!(message.to, "myself");
+                assert_eq!(message.content, EXPECTED_MESSAGE);
+            })
+            .expect("Failed to receive message from channel");
     }
 }

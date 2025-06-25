@@ -18,7 +18,9 @@ message LoginRequest {
     string pwd = 2;
     string on_ip = 3;    
     uint32 on_port = 4;
-    ComponentType component_type = 5;
+    bytes public_key = 5;    
+    string domain_name = 6;    
+    ComponentType component_type = 7;
 }
 
 message LoginResponse {

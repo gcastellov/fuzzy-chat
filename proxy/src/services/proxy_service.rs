@@ -1,16 +1,18 @@
 use super::*;
-use crate::{clients::{
-    info_client::{InfoClientFactory, InformerFactory},
-    landing_client::{LanderFactory, LandingClientFactory},
-}, models::info_proto::StatusResponse};
 use crate::models::proxy_proto::{
     CommandRequest, CommandResponse, proxy_service_server::ProxyService,
 };
+use crate::{
+    clients::{
+        info_client::{InfoClientFactory, InformerFactory},
+        landing_client::{LanderFactory, LandingClientFactory},
+    },
+    models::info_proto::StatusResponse,
+};
 use authorization::auth_client::Authenticator;
-use crosscutting::networking;
+use crosscutting::ConnectionSettings;
 use routing::proxy_client::{ProxyClientFactory, ProxyFactory, proxy::CommandType};
 use routing::route_client::{RouteClientFactory, RouterFactory};
-use tonic::transport::Uri;
 
 pub struct ProxyServiceImpl {
     authenticator: Arc<RwLock<Box<dyn Authenticator>>>,
@@ -96,10 +98,11 @@ impl ProxyServiceImpl {
             .initialize()
             .await
             .map_err(|_| Status::internal("Failed to initialize the router"))?;
-        
-        _ = router.redeem(conversation_id, access_key, nonce)
+
+        _ = router
+            .redeem(conversation_id, access_key, nonce)
             .await
-            .map_err(|_|Status::internal("Failed to redeem route"))?;
+            .map_err(|_| Status::internal("Failed to redeem route"))?;
 
         Ok(())
     }
@@ -120,30 +123,48 @@ impl ProxyServiceImpl {
             .await;
 
         let route = response.map_err(|_| Status::internal("Failed to get route"))?;
-        let endpoint = networking::to_http_endpoint(&route.ip_address, route.port_number)
-            .map_err(|_| Status::internal("Invalid endpoint"))?;
+
+        let connection_settings = ConnectionSettings {
+            ip: route.ip_address.clone(),
+            port: route.port_number as u16,
+            domain_name: route.domain_name.clone(),
+            certificate: route.public_key.clone(),
+        };
+
+        debug!(
+            "Routing command to: {:}",
+            connection_settings.get_public_endpoint()
+        );
 
         if route.end_route {
-            debug!("Landing command to: {:?}", route);
             return self
-                .land_command(endpoint, conversation_id, route.nonce, access_key, content)
+                .land_command(
+                    &connection_settings,
+                    conversation_id,
+                    route.nonce,
+                    access_key,
+                    content,
+                )
                 .await;
         }
 
-        debug!("Routing command to: {:?}", route);
-        self.route_command(endpoint, conversation_id, route.nonce, content)
+        self.route_command(&connection_settings, conversation_id, route.nonce, content)
             .await
     }
 
     async fn land_command(
         &self,
-        endpoint: Uri,
+        connection_settings: &ConnectionSettings,
         conversation_id: String,
         nonce: String,
         access_key: String,
         content: &[u8],
     ) -> Result<(), Status> {
-        let mut landing_client = self.lander_factory.get_lander(endpoint);
+        let mut landing_client = self.lander_factory.get_lander(
+            connection_settings.get_public_endpoint(),
+            connection_settings.certificate.clone(),
+            connection_settings.domain_name.clone(),
+        );
         landing_client.initialize().await.map_err(|e| {
             Status::internal(format!("Impossible to initialize landing client: {}", e))
         })?;
@@ -158,12 +179,16 @@ impl ProxyServiceImpl {
 
     async fn route_command(
         &self,
-        endpoint: Uri,
+        connection_settings: &ConnectionSettings,
         conversation_id: String,
         nonce: String,
         content: &[u8],
     ) -> Result<(), Status> {
-        let mut proxy_client = self.proxy_factory.get_proxy(endpoint);
+        let mut proxy_client = self.proxy_factory.get_proxy(
+            connection_settings.get_public_endpoint(),
+            connection_settings.certificate.clone(),
+            connection_settings.domain_name.clone(),
+        );
         proxy_client.initialize().await.map_err(|e| {
             Status::internal(format!("Impossible to initialize proxy client: {}", e))
         })?;
@@ -183,7 +208,7 @@ mod tests {
     use crate::{
         clients::{
             info_client::{MockInformer, MockInformerFactory},
-            landing_client::{client::TextResponse, MockLander, MockLanderFactory},
+            landing_client::{MockLander, MockLanderFactory, client::TextResponse},
         },
         models::info_proto::StatusResponse,
     };
@@ -194,7 +219,8 @@ mod tests {
     use routing::{
         proxy_client::{MockProxy, MockProxyFactory},
         route_client::{
-            route::{RedeemResponse, RouteResponse, SourceInfo}, MockRouter, MockRouterFactory
+            MockRouter, MockRouterFactory,
+            route::{RedeemResponse, RouteResponse, SourceInfo},
         },
     };
     use std::io::ErrorKind;
@@ -204,6 +230,8 @@ mod tests {
     const EXPECTED_NONCE: &str = "test_nonce";
     const EXPECTED_CONVERSATION_ID: &str = "test_conversation";
     const EXPECTED_SENDER_UID: &str = "sender_uid";
+    const EXPECTED_PUBLIC_KEY: &[u8] = b"test_public_key";
+    const EXPECTED_DOMAIN_NAME: &str = "test_domain_name";
 
     #[tokio::test]
     async fn given_proxy_not_authenticated_when_execute_command_then_returns_error() {
@@ -349,7 +377,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn given_authenticated_proxy_and_redeem_succeeds_when_execute_status_command_then_returns_success() {
+    async fn given_authenticated_proxy_and_redeem_succeeds_when_execute_status_command_then_returns_success()
+     {
         let mut mock_authenticator = MockAuthenticator::new();
         mock_authenticator
             .expect_is_authenticated()
@@ -421,7 +450,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn given_authenticated_proxy_and_redeem_succeeds_without_final_destination_when_execute_send_command_then_returns_success() {
+    async fn given_authenticated_proxy_and_redeem_succeeds_without_final_destination_when_execute_send_command_then_returns_success()
+     {
         let mut mock_authenticator = MockAuthenticator::new();
         mock_authenticator
             .expect_is_authenticated()
@@ -456,6 +486,8 @@ mod tests {
                         ip_address: "127.0.0.1".to_string(),
                         port_number: 8080,
                         nonce: EXPECTED_NONCE.to_string(),
+                        public_key: EXPECTED_PUBLIC_KEY.to_vec(),
+                        domain_name: EXPECTED_DOMAIN_NAME.to_string(),
                     })
                 })
             });
@@ -464,7 +496,7 @@ mod tests {
         });
 
         let mut proxy_factory = MockProxyFactory::new();
-        proxy_factory.expect_get_proxy().returning(move |_|{
+        proxy_factory.expect_get_proxy().returning(move |_, _, _| {
             let mut mock_proxy = MockProxy::new();
             mock_proxy
                 .expect_send_command()
@@ -474,9 +506,13 @@ mod tests {
                     mockall::predicate::eq(CommandType::Send),
                     mockall::predicate::eq(b"Test message".to_vec()),
                 )
-                .returning(|_, _, _, _| Box::pin(async { Ok(routing::proxy_client::CommandResponse {
-                    result: Some("Message sent".to_string()),
-                }) }));
+                .returning(|_, _, _, _| {
+                    Box::pin(async {
+                        Ok(routing::proxy_client::CommandResponse {
+                            result: Some("Message sent".to_string()),
+                        })
+                    })
+                });
             Box::new(mock_proxy)
         });
 
@@ -504,7 +540,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn given_authenticated_proxy_and_redeem_succeeds_with_final_destination_when_execute_send_command_then_returns_success() {
+    async fn given_authenticated_proxy_and_redeem_succeeds_with_final_destination_when_execute_send_command_then_returns_success()
+     {
         let mut mock_authenticator = MockAuthenticator::new();
         mock_authenticator
             .expect_is_authenticated()
@@ -539,6 +576,8 @@ mod tests {
                         ip_address: "127.0.0.1".to_string(),
                         port_number: 8080,
                         nonce: EXPECTED_NONCE.to_string(),
+                        public_key: EXPECTED_PUBLIC_KEY.to_vec(),
+                        domain_name: EXPECTED_DOMAIN_NAME.to_string(),
                     })
                 })
             });
@@ -547,19 +586,21 @@ mod tests {
         });
 
         let mut lander_factory = MockLanderFactory::new();
-        lander_factory.expect_get_lander().returning(move |_| {
-            let mut mock_lander = MockLander::new();
-            mock_lander
-                .expect_send_message()
-                .with(
-                    mockall::predicate::eq(EXPECTED_CONVERSATION_ID.to_string()),
-                    mockall::predicate::eq(EXPECTED_ACCESS_KEY.to_string()),
-                    mockall::predicate::eq(EXPECTED_NONCE.to_string()),
-                    mockall::predicate::eq(b"Test message".to_vec()),
-                )
-                .returning(|_, _, _, _| Box::pin(async { Ok(TextResponse{}) }));
-            Box::new(mock_lander)
-        });
+        lander_factory
+            .expect_get_lander()
+            .returning(move |_, _, _| {
+                let mut mock_lander = MockLander::new();
+                mock_lander
+                    .expect_send_message()
+                    .with(
+                        mockall::predicate::eq(EXPECTED_CONVERSATION_ID.to_string()),
+                        mockall::predicate::eq(EXPECTED_ACCESS_KEY.to_string()),
+                        mockall::predicate::eq(EXPECTED_NONCE.to_string()),
+                        mockall::predicate::eq(b"Test message".to_vec()),
+                    )
+                    .returning(|_, _, _, _| Box::pin(async { Ok(TextResponse {}) }));
+                Box::new(mock_lander)
+            });
 
         let proxy_service = ProxyServiceImpl {
             authenticator: Arc::new(RwLock::new(Box::new(mock_authenticator))),
@@ -583,5 +624,4 @@ mod tests {
         assert!(command_response.result.is_some());
         assert_eq!(command_response.result.unwrap(), "Message sent");
     }
-
 }

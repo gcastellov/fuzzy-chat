@@ -1,7 +1,8 @@
 use super::RedisRepository;
-use crate::models::{SessionInfo, auth_proto::ComponentType};
+use crate::models::SessionInfo;
 use crate::storage;
 use crate::storage::SessionRepository;
+use crosscutting::Component;
 use redis::{Commands, FromRedisValue, ToRedisArgs, Value, from_redis_value};
 use tonic::async_trait;
 
@@ -15,11 +16,11 @@ fn get_session_key(key: &str) -> String {
     format!("{}:{}", SESSIONS_KEY, key)
 }
 
-fn get_member_session_key(component_type: &ComponentType, uid: &str) -> String {
+fn get_member_session_key(component_type: &Component, uid: &str) -> String {
     let key = match component_type {
-        ComponentType::Controller => CONTROLLER_SESSION_KEY,
-        ComponentType::Client => CLIENT_SESSION_KEY,
-        ComponentType::Proxy => PROXY_SESSION_KEY,
+        Component::Controller => CONTROLLER_SESSION_KEY,
+        Component::Client => CLIENT_SESSION_KEY,
+        Component::Proxy => PROXY_SESSION_KEY,
     };
 
     format!("{}:{}", key, uid)
@@ -29,7 +30,7 @@ fn get_member_session_key(component_type: &ComponentType, uid: &str) -> String {
 impl SessionRepository for RedisRepository {
     async fn set_session(&self, session_info: &SessionInfo) {
         let mut connection = self.connection.write().await;
-        let component_type = ComponentType::from(session_info.component_type);
+        let component_type = Component::from(session_info.component_type);
 
         redis::pipe()
             .atomic()
@@ -53,7 +54,7 @@ impl SessionRepository for RedisRepository {
 
         match connection.get_ex::<String, SessionInfo>(key, EXPIRY_TIME) {
             Ok(session_info) => {
-                let component_type = ComponentType::from(session_info.component_type);
+                let component_type = Component::from(session_info.component_type);
                 let c_key = get_member_session_key(&component_type, &session_info.uid);
                 () = connection
                     .expire(c_key, storage::SESSIONS_EXPIRATION_TIME.as_secs() as i64)
@@ -72,7 +73,7 @@ impl SessionRepository for RedisRepository {
 
     async fn get_proxies(&self, access_key: &str) -> Option<Vec<SessionInfo>> {
         let mut connection = self.connection.write().await;
-        let key = get_member_session_key(&ComponentType::Proxy, "*");
+        let key = get_member_session_key(&Component::Proxy, "*");
         let all: Vec<String> = connection.scan_match(&key).unwrap().collect();
 
         if all.is_empty() {
@@ -97,7 +98,7 @@ impl SessionRepository for RedisRepository {
     }
 
     async fn get_client(&self, uid: &str) -> Option<SessionInfo> {
-        let key = get_member_session_key(&ComponentType::Client, uid);
+        let key = get_member_session_key(&Component::Client, uid);
         let mut connection = self.connection.write().await;
         let access_key: String = connection.get(key).unwrap();
         let key = get_session_key(&access_key);
@@ -106,21 +107,21 @@ impl SessionRepository for RedisRepository {
 
     async fn count_proxies(&self) -> usize {
         let mut connection = self.connection.write().await;
-        let key = get_member_session_key(&ComponentType::Proxy, "*");
+        let key = get_member_session_key(&Component::Proxy, "*");
         let keys: Vec<String> = connection.scan_match(&key).unwrap().collect();
         keys.len()
     }
 
     async fn count_clients(&self) -> usize {
         let mut connection = self.connection.write().await;
-        let key = get_member_session_key(&ComponentType::Client, "*");
+        let key = get_member_session_key(&Component::Client, "*");
         let keys: Vec<String> = connection.scan_match(&key).unwrap().collect();
         keys.len()
     }
 
     async fn count_controllers(&self) -> usize {
         let mut connection = self.connection.write().await;
-        let key = get_member_session_key(&ComponentType::Controller, "*");
+        let key = get_member_session_key(&Component::Controller, "*");
         let keys: Vec<String> = connection.scan_match(&key).unwrap().collect();
         keys.len()
     }

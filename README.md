@@ -70,12 +70,12 @@ Create self-signed certificate for the CA
 
 Create a Private Key for the Domain Controller
 ```
-# openssl genrsa -out dc.key 2048
+# openssl genrsa -out server.key 2048
 ```
 
 Create a Certificate Signing Request (CSR) for the DC
 ```
-# openssl req -new -key dc.key -out dc.csr -subj "/C=US/ST=State/L=City/O=ExampleOrg/OU=IT Department/CN=your.domain.controller.com"
+# openssl req -new -key server.key -out dc.csr -subj "/C=US/ST=State/L=City/O=ExampleOrg/OU=IT Department/CN=your.domain.controller.com"
 ```
 
 Create an OpenSSL Config for SAN (Subject Alternative Names). Create a file called dc.ext:
@@ -92,7 +92,18 @@ DNS.1 = your.domain.controller.com
 
 Sign the DC Certificate with the Root CA
 ```
-# openssl x509 -req -in dc.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out dc.crt -days 825 -sha256 -extfile dc.ext
+# openssl x509 -req -in dc.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 825 -sha256 -extfile dc.ext
+```
+
+
+To automate the whole process, you can execute the following script:
+```
+# sh ./scripts/generate-certs.sh
+```
+To generate all certificates for the involved components of the docker compose, you can execute the following script. Ensure you copy the scripts to the volume being used and change the settings if required.
+
+```
+# sh ./scripts/generate_multiple_certs.sh
 ```
 
 ### Available commands (ATM)

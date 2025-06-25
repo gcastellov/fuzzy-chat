@@ -1,7 +1,8 @@
 use super::ExpirationWrapper;
-use crate::models::{SessionInfo, auth_proto::ComponentType};
+use crate::models::SessionInfo;
 use crate::storage;
 use crate::storage::SessionRepository;
+use crosscutting::Component;
 use log::debug;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -92,18 +93,18 @@ impl InMemoryRepository {
 #[async_trait]
 impl SessionRepository for InMemoryRepository {
     async fn set_session(&self, session_info: &SessionInfo) {
-        let comonent_type = ComponentType::from(session_info.component_type);
+        let comonent_type = Component::from(session_info.component_type);
 
         match comonent_type {
-            ComponentType::Client => {
+            Component::Client => {
                 let mut clients = self.clients.write().await;
                 clients.insert(session_info.uid.clone(), session_info.access_key.clone());
             }
-            ComponentType::Proxy => {
+            Component::Proxy => {
                 let mut proxies = self.proxies.write().await;
                 proxies.insert(session_info.uid.clone(), session_info.access_key.clone());
             }
-            ComponentType::Controller => {
+            Component::Controller => {
                 let mut controllers = self.controllers.write().await;
                 controllers.insert(session_info.uid.clone(), session_info.access_key.clone());
             }

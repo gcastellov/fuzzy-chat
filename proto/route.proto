@@ -30,8 +30,10 @@ message InitResponse {
 message RouteResponse {
     string ip_address = 1;
     uint32 port_number = 2;
-    string nonce = 3;
-    bool end_route = 4;
+    bytes public_key = 3;
+    string domain_name = 4;
+    string nonce = 5;
+    bool end_route = 6;
 }
 
 message RedeemResponse {

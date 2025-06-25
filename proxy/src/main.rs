@@ -5,8 +5,8 @@ mod services;
 use authorization::auth::start_auth_handler;
 use authorization::auth_client::{AuthClientFactory, AuthenticatorFactory, ClientSession};
 use crosscutting::settings;
+use crosscutting::{Component, ComponentDescriptor};
 use log::{debug, info};
-use models::auth_proto::ComponentType;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::signal;
@@ -19,11 +19,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     settings::logging::setup_logger(&log_filename)?;
     debug!("Starting proxy component...");
 
-    let descriptor = settings::component::DescriptorBuilder::load()?
-        .with_component_type(ComponentType::Proxy as u8)
-        .with_version("1.0.0")
-        .build()?;
-
+    let descriptor = ComponentDescriptor::load(Component::Proxy)?;
     let client_session: Arc<RwLock<ClientSession>> =
         Arc::new(RwLock::new(ClientSession::default()));
     let authenticator_factory = AuthClientFactory {};
@@ -35,7 +31,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let auth_handle =
         start_auth_handler(Arc::clone(&authenticator), cancellation_token.child_token());
 
-    let socket_address = descriptor.on_local_socket_address();
+    let socket_address = descriptor
+        .get_connection_settings()
+        .get_local_socket_address();
     info!("Starting gRPC server on {}...", socket_address);
     let server_handle = services::start_server_handler(socket_address, authenticator);
     debug!("Press Ctrl+C to exit gracefully");

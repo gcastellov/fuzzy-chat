@@ -9,9 +9,9 @@ fn get_credentials_valid() {
     }
     let result = auth::get_credentials();
     assert!(result.is_ok());
-    let (uid, pwd) = result.unwrap();
-    assert_eq!(uid, "user");
-    assert_eq!(pwd, "password");
+    let credentials = result.unwrap();
+    assert_eq!(credentials.uid, "user");
+    assert_eq!(credentials.pwd, "password");
 }
 
 #[test]

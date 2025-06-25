@@ -2,14 +2,13 @@ mod command;
 mod models;
 mod services;
 
-use crate::models::auth_proto::ComponentType;
 use authorization::auth::start_auth_handler;
 use authorization::auth_client::AuthClientFactory;
 use authorization::auth_client::AuthenticatorFactory;
 use authorization::auth_client::ClientSession;
 use command::Command;
 use command::Commander;
-use crosscutting::settings;
+use crosscutting::{Component, ComponentDescriptor, settings::logging};
 use log::{debug, error, warn};
 use models::TextMessage;
 use routing::proxy_client::proxy::CommandResponse;
@@ -23,16 +22,14 @@ use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let log_filename = settings::logging::get_default_log_file_name("client");
-    settings::logging::setup_logger(&log_filename)?;
+    let log_filename = logging::get_default_log_file_name("client");
+    logging::setup_logger(&log_filename)?;
     debug!("Starting Client component...");
 
-    let descriptor = settings::component::DescriptorBuilder::load()?
-        .with_component_type(ComponentType::Client as u8)
-        .with_version("1.0.0")
-        .build()?;
-
-    let socket_address = descriptor.on_local_socket_address();
+    let descriptor = ComponentDescriptor::load(Component::Client)?;
+    let socket_address = descriptor
+        .get_connection_settings()
+        .get_local_socket_address();
     let (tx, rx) = tokio::sync::mpsc::channel::<TextMessage>(100);
     start_listener_handler(rx);
     let server_handle = services::start_server_handler(socket_address, tx);

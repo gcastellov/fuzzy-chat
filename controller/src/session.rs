@@ -1,5 +1,6 @@
 use crate::models::SessionInfo;
 use crate::storage::{self, RepositoryType, SessionRepository};
+use crosscutting::{Component, ConnectionSettings};
 use std::net::SocketAddr;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -18,20 +19,21 @@ impl SessionManager {
 
     pub async fn set_session(
         &self,
-        component_type: u8,
         uid: &str,
-        client_ip: SocketAddr,
-        on_ip_address: &str,
-        on_port_number: u16,
+        component_type: Component,
+        client_ip: &SocketAddr,
+        connection_settings: &ConnectionSettings,
     ) -> String {
         let access_key = Self::generate_access_key();
         let session_info = SessionInfo {
             access_key: access_key.clone(),
             uid: uid.to_string(),
-            client_ip,
-            component_type,
-            on_ip_address: on_ip_address.to_string(),
-            on_port_number,
+            client_ip: *client_ip,
+            component_type: u8::from(component_type),
+            on_ip_address: connection_settings.ip.clone(),
+            on_port_number: connection_settings.port,
+            public_key: connection_settings.certificate.clone(),
+            domain_name: connection_settings.domain_name.clone(),
         };
 
         self.repository.set_session(&session_info).await;
@@ -82,6 +84,8 @@ mod tests {
     const EXPECTED_IP: &str = "127.0.0.1";
     const EXPECTED_PORT: u16 = 8080;
     const EXPECTED_ACCESS_KEY: &str = "test_access_key";
+    const EXPECTED_PUBLIC_KEY: &[u8] = b"test_public_key";
+    const EXPECTED_DOMAIN_NAME: &str = "test_domain_name";
 
     impl SessionManager {
         fn with_repository(repository: Box<dyn SessionRepository>) -> Self {
@@ -97,6 +101,15 @@ mod tests {
                 && self.component_type == other.component_type
                 && self.on_ip_address == other.on_ip_address
                 && self.on_port_number == other.on_port_number
+        }
+    }
+
+    fn get_connection_settings() -> ConnectionSettings {
+        ConnectionSettings {
+            ip: EXPECTED_IP.to_string(),
+            port: EXPECTED_PORT,
+            domain_name: EXPECTED_DOMAIN_NAME.to_string(),
+            certificate: EXPECTED_PUBLIC_KEY.to_vec(),
         }
     }
 
@@ -123,11 +136,10 @@ mod tests {
         let session_manager = SessionManager::with_repository(Box::new(mock_repo));
         let access_key = session_manager
             .set_session(
-                1,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Proxy,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
@@ -143,6 +155,8 @@ mod tests {
             component_type: 1,
             on_ip_address: EXPECTED_IP.to_string(),
             on_port_number: EXPECTED_PORT,
+            public_key: EXPECTED_PUBLIC_KEY.to_vec(),
+            domain_name: EXPECTED_DOMAIN_NAME.to_string(),
         };
 
         let ref_expected_session_info = expected_session_info.clone();
@@ -183,6 +197,8 @@ mod tests {
                 component_type: 2,
                 on_ip_address: EXPECTED_IP.to_string(),
                 on_port_number: EXPECTED_PORT,
+                public_key: EXPECTED_PUBLIC_KEY.to_vec(),
+                domain_name: EXPECTED_DOMAIN_NAME.to_string(),
             },
             SessionInfo {
                 access_key: EXPECTED_ACCESS_KEY.to_string(),
@@ -191,6 +207,8 @@ mod tests {
                 component_type: 2,
                 on_ip_address: EXPECTED_IP.to_string(),
                 on_port_number: EXPECTED_PORT,
+                public_key: EXPECTED_PUBLIC_KEY.to_vec(),
+                domain_name: EXPECTED_DOMAIN_NAME.to_string(),
             },
         ];
 
@@ -232,6 +250,8 @@ mod tests {
             component_type: 1,
             on_ip_address: EXPECTED_IP.to_string(),
             on_port_number: EXPECTED_PORT,
+            public_key: EXPECTED_PUBLIC_KEY.to_vec(),
+            domain_name: EXPECTED_DOMAIN_NAME.to_string(),
         };
 
         let ref_expected_client = expected_client.clone();

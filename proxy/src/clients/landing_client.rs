@@ -1,6 +1,6 @@
 use super::*;
-use crosscutting::{abstractions::GrpcClient, settings};
-use std::{error::Error, fs, path::PathBuf};
+use crosscutting::abstractions::GrpcClient;
+use std::error::Error;
 use tonic::{
     Request,
     transport::{Channel, ClientTlsConfig, Uri},
@@ -26,13 +26,17 @@ pub trait Lander: GrpcClient {
 
 struct LandingClient {
     endpoint: Uri,
+    public_key: Vec<u8>,
+    domain_name: String,
     client: Option<LandingServiceClient<Channel>>,
 }
 
 impl LandingClient {
-    pub fn new(endpoint: Uri) -> Self {
+    pub fn new(endpoint: Uri, public_key: Vec<u8>, domain_name: String) -> Self {
         Self {
             endpoint,
+            public_key,
+            domain_name,
             client: None,
         }
     }
@@ -67,14 +71,11 @@ impl Lander for LandingClient {
 #[async_trait]
 impl GrpcClient for LandingClient {
     async fn initialize(&mut self) -> Result<(), Box<dyn Error>> {
-        let cert_path = PathBuf::from(settings::environment::get_certificates_dir());
-        let cert_path = cert_path.join("ca.crt");
-        let ca_cert = fs::read(cert_path)?;
-
-        let domain_name = settings::service::get_controller_domain_name()?;
         let tls_config = ClientTlsConfig::new()
-            .ca_certificate(tonic::transport::Certificate::from_pem(ca_cert))
-            .domain_name(domain_name);
+            .ca_certificate(tonic::transport::Certificate::from_pem(
+                self.public_key.clone(),
+            ))
+            .domain_name(self.domain_name.clone());
 
         let channel = Channel::builder(self.endpoint.clone())
             .tls_config(tls_config)?
@@ -98,11 +99,21 @@ pub struct LandingClientFactory;
 
 #[automock]
 pub trait LanderFactory: Send + Sync {
-    fn get_lander(&self, endpoint: Uri) -> Box<dyn Lander>;
+    fn get_lander(
+        &self,
+        endpoint: Uri,
+        public_key: Vec<u8>,
+        domain_name: String,
+    ) -> Box<dyn Lander>;
 }
 
 impl LanderFactory for LandingClientFactory {
-    fn get_lander(&self, endpoint: Uri) -> Box<dyn Lander> {
-        Box::new(LandingClient::new(endpoint))
+    fn get_lander(
+        &self,
+        endpoint: Uri,
+        public_key: Vec<u8>,
+        domain_name: String,
+    ) -> Box<dyn Lander> {
+        Box::new(LandingClient::new(endpoint, public_key, domain_name))
     }
 }

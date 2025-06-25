@@ -33,20 +33,19 @@ impl RouteServiceImpl {
         session_info: &SessionInfo,
         end_route: bool,
     ) -> Result<Response<RouteResponse>, Status> {
+        let connection_settings = session_info.to_connection_settings();
+
         let nonce = self
             .route_manager
-            .store_route(
-                conversation_id.to_string(),
-                session_info.on_ip_address.clone(),
-                session_info.on_port_number,
-                end_route,
-            )
+            .store_route(conversation_id, &connection_settings, end_route)
             .await
             .ok_or(Status::internal("Failed to store route"))?;
 
         let response = RouteResponse {
             ip_address: session_info.on_ip_address.clone(),
             port_number: session_info.on_port_number as u32,
+            public_key: session_info.public_key.clone(),
+            domain_name: session_info.domain_name.clone(),
             nonce,
             end_route,
         };
@@ -176,10 +175,10 @@ impl RouteService for RouteServiceImpl {
 mod tests {
 
     use super::*;
-    use crate::models::auth_proto::ComponentType;
     use crate::routing::RouteManager;
     use crate::session::SessionManager;
     use crate::storage::RepositoryType;
+    use crosscutting::{Component, ConnectionSettings};
     use tokio_util::sync::CancellationToken;
 
     const EXPECTED_CONVERSATION_ID: &str = "test_conversation_id";
@@ -189,6 +188,17 @@ mod tests {
     const EXPECTED_TARGET: &str = "test_target";
     const EXPECTED_ACCESS_KEY: &str = "test_access_key";
     const EXPECTED_NONCE: &str = "test_nonce";
+    const EXPECTED_PUBLIC_KEY: &[u8] = b"test_public_key";
+    const EXPECTED_DOMAIN_NAME: &str = "test_domain_name";
+
+    fn get_connection_settings() -> ConnectionSettings {
+        ConnectionSettings {
+            ip: EXPECTED_IP.to_string(),
+            port: EXPECTED_PORT,
+            domain_name: EXPECTED_DOMAIN_NAME.to_string(),
+            certificate: EXPECTED_PUBLIC_KEY.to_vec(),
+        }
+    }
 
     #[tokio::test]
     async fn given_non_existing_session_when_initializing_conversation_then_returns_error() {
@@ -233,11 +243,10 @@ mod tests {
 
         let access_key = session_manager
             .set_session(
-                ComponentType::Client as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Client,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
@@ -295,11 +304,10 @@ mod tests {
 
         let access_key = session_manager
             .set_session(
-                ComponentType::Client as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Client,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
@@ -332,11 +340,10 @@ mod tests {
 
         let access_key = session_manager
             .set_session(
-                ComponentType::Client as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Client,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
@@ -374,21 +381,19 @@ mod tests {
 
         let access_key = session_manager
             .set_session(
-                ComponentType::Client as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Client,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
         session_manager
             .set_session(
-                ComponentType::Proxy as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Proxy,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
@@ -452,11 +457,10 @@ mod tests {
 
         let access_key = session_manager
             .set_session(
-                ComponentType::Client as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Client,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
@@ -490,11 +494,10 @@ mod tests {
 
         let access_key = session_manager
             .set_session(
-                ComponentType::Client as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Client,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
@@ -533,11 +536,10 @@ mod tests {
 
         let access_key = session_manager
             .set_session(
-                ComponentType::Client as u8,
                 EXPECTED_UID,
-                networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
-                EXPECTED_IP,
-                EXPECTED_PORT,
+                Component::Client,
+                &networking::to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
+                &get_connection_settings(),
             )
             .await;
 
@@ -545,13 +547,9 @@ mod tests {
             .initialize(EXPECTED_UID, EXPECTED_TARGET)
             .await
             .unwrap();
+
         let nonce = route_manager
-            .store_route(
-                conversation_id.clone(),
-                EXPECTED_IP.to_string(),
-                EXPECTED_PORT,
-                false,
-            )
+            .store_route(&conversation_id, &get_connection_settings(), false)
             .await
             .unwrap();
 

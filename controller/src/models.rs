@@ -10,7 +10,7 @@ pub mod route_proto {
     tonic::include_proto!("route");
 }
 
-use auth_proto::ComponentType;
+use crosscutting::ConnectionSettings;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -18,6 +18,8 @@ use std::net::SocketAddr;
 pub struct Route {
     pub on_ip_address: String,
     pub on_port_number: u16,
+    pub public_key: Vec<u8>,
+    pub domain_name: String,
     pub nonce: String,
     pub end_route: bool,
 }
@@ -45,6 +47,19 @@ pub struct SessionInfo {
     pub on_port_number: u16,
     pub on_ip_address: String,
     pub component_type: u8,
+    pub public_key: Vec<u8>,
+    pub domain_name: String,
+}
+
+impl SessionInfo {
+    pub fn to_connection_settings(&self) -> ConnectionSettings {
+        ConnectionSettings {
+            ip: self.on_ip_address.clone(),
+            port: self.on_port_number,
+            domain_name: self.domain_name.clone(),
+            certificate: self.public_key.clone(),
+        }
+    }
 }
 
 impl Conversation {
@@ -62,29 +77,5 @@ impl Conversation {
 impl Member {
     pub fn new(uid: String, pwd: String) -> Self {
         Self { uid, pwd }
-    }
-}
-
-impl From<u8> for ComponentType {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => ComponentType::Controller,
-            1 => ComponentType::Proxy,
-            2 => ComponentType::Client,
-            _ => panic!("Invalid value for ComponentType: {}", value),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn from_byte_to_component_type() {
-        assert_eq!(ComponentType::from(0), ComponentType::Controller);
-        assert_eq!(ComponentType::from(1), ComponentType::Proxy);
-        assert_eq!(ComponentType::from(2), ComponentType::Client);
-        assert!(std::panic::catch_unwind(|| ComponentType::from(3)).is_err());
     }
 }

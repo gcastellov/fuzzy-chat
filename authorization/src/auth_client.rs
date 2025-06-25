@@ -1,7 +1,8 @@
-use crosscutting::{abstractions::GrpcClient, networking, settings};
-use log::debug;
+use crosscutting::{
+    Component, ComponentDescriptor, ConnectionSettings, Credentials, abstractions::GrpcClient,
+};
 use mockall::automock;
-use std::{error::Error, fs, path::PathBuf, sync::Arc};
+use std::{error::Error, sync::Arc};
 use tokio::sync::RwLock;
 use tonic::{
     Request, async_trait,
@@ -9,7 +10,7 @@ use tonic::{
 };
 
 use super::auth_proto::{
-    ComponentType, LoginRequest, LogoutRequest, PingRequest, auth_service_client::AuthServiceClient,
+    LoginRequest, LogoutRequest, PingRequest, auth_service_client::AuthServiceClient,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -32,30 +33,23 @@ impl ClientSession {
 struct AuthClient {
     session: Arc<RwLock<ClientSession>>,
     client: Option<AuthServiceClient<Channel>>,
-    uid: String,
-    pwd: String,
-    on_ip: String,
-    on_port: u16,
-    component_type: ComponentType,
+    credentials: Credentials,
+    connection_settings: ConnectionSettings,
+    component_type: Component,
 }
 
 #[async_trait]
 impl GrpcClient for AuthClient {
     async fn initialize(&mut self) -> Result<(), Box<dyn Error>> {
-        let cert_path = PathBuf::from(settings::environment::get_certificates_dir());
-        let cert_path = cert_path.join("ca.crt");
-        let ca_cert = fs::read(cert_path)?;
+        let controller_settings = Component::Controller.get_connection_settings()?;
 
-        let domain_name = settings::service::get_controller_domain_name()?;
-        let (ip, port) = settings::service::get_controller_connection_settings()?;
-        let channel_endpoint = networking::to_https_endpoint(&ip, port as u32)?;
         let tls_config = ClientTlsConfig::new()
-            .ca_certificate(tonic::transport::Certificate::from_pem(ca_cert))
-            .domain_name(domain_name);
+            .ca_certificate(tonic::transport::Certificate::from_pem(
+                controller_settings.certificate.clone(),
+            ))
+            .domain_name(controller_settings.domain_name.clone());
 
-        debug!("Connecting to gRPC server at: {}", channel_endpoint);
-
-        let channel = Channel::builder(channel_endpoint)
+        let channel = Channel::builder(controller_settings.get_public_endpoint())
             .tls_config(tls_config)?
             .connect()
             .await
@@ -80,11 +74,13 @@ pub trait Authenticator: GrpcClient {
 impl Authenticator for AuthClient {
     async fn login(&mut self) -> Result<(), Box<dyn Error>> {
         let request = Request::new(LoginRequest {
-            component_type: self.component_type as i32,
-            uid: self.uid.clone(),
-            pwd: self.pwd.clone(),
-            on_ip: self.on_ip.clone(),
-            on_port: self.on_port as u32,
+            component_type: self.component_type.clone().into(),
+            uid: self.credentials.uid.clone(),
+            pwd: self.credentials.pwd.clone(),
+            on_ip: self.connection_settings.ip.clone(),
+            on_port: self.connection_settings.port as u32,
+            public_key: self.connection_settings.certificate.clone(),
+            domain_name: self.connection_settings.domain_name.clone(),
         });
 
         let response = self
@@ -97,7 +93,7 @@ impl Authenticator for AuthClient {
             .into_inner();
 
         let mut session = self.session.write().await;
-        session.set_session(self.uid.clone(), response.access_key.clone());
+        session.set_session(self.credentials.uid.clone(), response.access_key.clone());
         Ok(())
     }
 
@@ -145,18 +141,13 @@ impl Authenticator for AuthClient {
 }
 
 impl AuthClient {
-    pub fn new(
-        session: Arc<RwLock<ClientSession>>,
-        descriptor: &settings::component::Descriptor,
-    ) -> Self {
+    pub fn new(session: Arc<RwLock<ClientSession>>, descriptor: &ComponentDescriptor) -> Self {
         Self {
             client: None,
-            component_type: ComponentType::try_from(descriptor.component_type as i32).unwrap(),
             session,
-            uid: descriptor.uid.clone(),
-            pwd: descriptor.pwd.clone(),
-            on_ip: descriptor.on_ip.clone(),
-            on_port: descriptor.on_port,
+            component_type: descriptor.into(),
+            credentials: descriptor.get_credentials().clone(),
+            connection_settings: descriptor.get_connection_settings().clone(),
         }
     }
 }
@@ -168,7 +159,7 @@ pub trait AuthenticatorFactory: Send + Sync {
     fn get_authenticator(
         &self,
         session: Arc<RwLock<ClientSession>>,
-        descriptor: &settings::component::Descriptor,
+        descriptor: &ComponentDescriptor,
     ) -> Box<dyn Authenticator>;
 }
 
@@ -176,7 +167,7 @@ impl AuthenticatorFactory for AuthClientFactory {
     fn get_authenticator(
         &self,
         session: Arc<RwLock<ClientSession>>,
-        descriptor: &settings::component::Descriptor,
+        descriptor: &ComponentDescriptor,
     ) -> Box<dyn Authenticator> {
         Box::new(AuthClient::new(session, descriptor))
     }

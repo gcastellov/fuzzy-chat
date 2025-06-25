@@ -1,5 +1,6 @@
 use crate::models::{Conversation, Route, SessionInfo};
 use crate::storage::{self, RepositoryType, RouteRepository};
+use crosscutting::ConnectionSettings;
 use mockall::automock;
 use rand::seq::IteratorRandom;
 use tokio_util::sync::CancellationToken;
@@ -109,19 +110,20 @@ impl RouteManager {
 
     pub async fn store_route(
         &self,
-        conversation_id: String,
-        on_ip_address: String,
-        on_port_number: u16,
+        conversation_id: &str,
+        connection_settings: &ConnectionSettings,
         end_route: bool,
     ) -> Option<String> {
         let route = Route {
-            on_ip_address,
-            on_port_number,
+            on_ip_address: connection_settings.ip.clone(),
+            on_port_number: connection_settings.port,
+            public_key: connection_settings.certificate.clone(),
+            domain_name: connection_settings.domain_name.clone(),
             nonce: Self::create_nonce(),
             end_route,
         };
 
-        self.repository.set_route(&conversation_id, &route).await
+        self.repository.set_route(conversation_id, &route).await
     }
 
     pub async fn redeem_route(&self, conversation_id: &str, nonce: &str) -> Option<Route> {
@@ -171,6 +173,8 @@ mod tests {
     const EXPECTED_TO: &str = "to";
     const EXPECTED_SESSION_ID: &str = "test_session_id";
     const EXPECTED_STRATEGY_ID: u8 = 1;
+    const EXPECTED_PUBLIC_KEY: &[u8] = b"test_public_key";
+    const EXPECTED_DOMAIN_NAME: &str = "test_domain_name";
 
     impl RouteManager {
         fn with_repository(repository: Box<dyn RouteRepository>) -> Self {
@@ -185,6 +189,15 @@ mod tests {
                 route_strategy_factory: strategy_factory,
                 repository: Box::new(MockRouteRepository::new()),
             }
+        }
+    }
+
+    fn get_connection_settings() -> ConnectionSettings {
+        ConnectionSettings {
+            ip: EXPECTED_IP.to_string(),
+            port: EXPECTED_PORT,
+            domain_name: EXPECTED_DOMAIN_NAME.to_string(),
+            certificate: EXPECTED_PUBLIC_KEY.to_vec(),
         }
     }
 
@@ -224,12 +237,7 @@ mod tests {
 
         let manager = RouteManager::with_repository(Box::new(mock_repo));
         let result = manager
-            .store_route(
-                EXPECTED_CONVERSATION_ID.to_string(),
-                EXPECTED_IP.to_string(),
-                EXPECTED_PORT,
-                false,
-            )
+            .store_route(EXPECTED_CONVERSATION_ID, &get_connection_settings(), false)
             .await;
 
         assert_eq!(result, Some(EXPECTED_NONCE.to_string()));
@@ -247,6 +255,8 @@ mod tests {
                 Some(Route {
                     on_ip_address: EXPECTED_IP.to_string(),
                     on_port_number: EXPECTED_PORT,
+                    public_key: EXPECTED_PUBLIC_KEY.to_vec(),
+                    domain_name: EXPECTED_DOMAIN_NAME.to_string(),
                     nonce: EXPECTED_NONCE.to_string(),
                     end_route: false,
                 })
@@ -315,6 +325,8 @@ mod tests {
             on_port_number: EXPECTED_PORT,
             client_ip: to_socket_address(EXPECTED_IP, EXPECTED_PORT).unwrap(),
             component_type: 2,
+            public_key: EXPECTED_PUBLIC_KEY.to_vec(),
+            domain_name: EXPECTED_DOMAIN_NAME.to_string(),
         };
 
         let available_proxies = vec![session_info.clone()];

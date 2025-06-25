@@ -1,12 +1,12 @@
 pub mod landing_service;
 use crate::models::{TextMessage, client_proto::landing_service_server::LandingServiceServer};
-use crosscutting::tracing;
+use crosscutting::{settings::service, tracing};
 use landing_service::LandingServiceImpl;
 use log::{error, info};
 use std::error::Error;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::Sender;
-use tonic::transport::Server;
+use tonic::transport::{Server, ServerTlsConfig};
 use tonic::{Request, Response, Status};
 
 pub struct ClientGrpcServer {
@@ -21,8 +21,12 @@ impl ClientGrpcServer {
 
     pub async fn start(&self) -> Result<(), Box<dyn Error>> {
         let landing_service = LandingServiceImpl::new(self.tx.clone());
+        let identity = service::load_tls_identity("server.crt", "server.key").unwrap();
+        let tls_config = ServerTlsConfig::new().identity(identity);
 
         Server::builder()
+            .tls_config(tls_config)
+            .unwrap()
             .layer(tracing::UriTracingLayer)
             .add_service(LandingServiceServer::new(landing_service))
             .serve(self.socket_address)

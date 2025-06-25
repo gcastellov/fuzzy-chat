@@ -1,7 +1,9 @@
+use crosscutting::{Component, ConnectionSettings};
+
 use super::*;
 use crate::models::auth_proto::{
-    ComponentType, LoginRequest, LoginResponse, LogoutRequest, LogoutResponse, PingRequest,
-    PingResponse, auth_service_server::AuthService,
+    LoginRequest, LoginResponse, LogoutRequest, LogoutResponse, PingRequest, PingResponse,
+    auth_service_server::AuthService,
 };
 use crate::{membership::MemberManager, session::SessionManager};
 use std::net::SocketAddr;
@@ -98,10 +100,8 @@ impl AuthService for AuthServiceImpl {
             return Err(Status::invalid_argument("UID and PWD cannot be empty"));
         }
 
-        let component_type = ComponentType::try_from(login_request.component_type)
-            .map_err(|_| Status::invalid_argument("Invalid component type"))?;
-
-        if component_type == ComponentType::Controller {
+        let component_type = Component::from(login_request.component_type);
+        if component_type == Component::Controller {
             return Err(Status::invalid_argument("Invalid component type"));
         }
 
@@ -109,14 +109,20 @@ impl AuthService for AuthServiceImpl {
             .validate_credentials(&login_request.uid, &login_request.pwd)
             .await
         {
+            let connection_settings = ConnectionSettings {
+                ip: login_request.on_ip.clone(),
+                port: login_request.on_port as u16,
+                certificate: login_request.public_key.clone(),
+                domain_name: login_request.domain_name.clone(),
+            };
+
             let access_key = self
                 .session_manager
                 .set_session(
-                    component_type as u8,
                     &login_request.uid,
-                    client_ip,
-                    &login_request.on_ip,
-                    login_request.on_port as u16,
+                    component_type.clone(),
+                    &client_ip,
+                    &connection_settings,
                 )
                 .await;
 
@@ -130,10 +136,9 @@ impl AuthService for AuthServiceImpl {
                 message: "Login successful".to_string(),
             };
 
-            let component: &str = component_type.as_str_name();
             info!(
                 "Accepted connection from {} : {}",
-                component, reply.access_key
+                component_type, reply.access_key
             );
             return Ok(Response::new(reply));
         }
@@ -173,6 +178,7 @@ mod tests {
     const EXPECTED_PWD: &str = "w8(PR&-HCJ*ersZV";
     const EXPECTED_IP: &str = "127.0.0.1";
     const EXPECTED_PORT: u16 = 8080;
+    const EXPECTED_DOMAIN_NAME: &str = "localhost";
 
     fn create_service() -> AuthServiceImpl {
         let cancellation_token = CancellationToken::new();
@@ -185,11 +191,13 @@ mod tests {
 
     fn create_login_request() -> Request<LoginRequest> {
         Request::new(LoginRequest {
-            component_type: ComponentType::Client as i32,
+            component_type: i32::from(Component::Client),
             uid: EXPECTED_UID.to_string(),
             pwd: EXPECTED_PWD.to_string(),
             on_ip: EXPECTED_IP.to_string(),
             on_port: EXPECTED_PORT as u32,
+            public_key: vec![],
+            domain_name: EXPECTED_DOMAIN_NAME.to_string(),
         })
     }
 
