@@ -16,7 +16,7 @@ fn get_service_endpoint_valid() {
         env::set_var(LISTENING_IP_KEY, "127.0.0.1");
         env::set_var(LISTENING_PORT_KEY, "9090");
         env::set_var(DOMAIN_NAME_KEY, "localhost");
-        env::set_var(CERTS_DIR_KEY, "../assets/certs");
+        env::set_var(CERTS_DIR_KEY, "../assets/certs/controller");
     }
 
     let result = service::get_connection_settings();
@@ -29,7 +29,7 @@ fn get_controller_connection_settings_valid() {
         env::set_var(CONTROLLER_IP_KEY, "127.0.0.1");
         env::set_var(CONTROLLER_PORT_KEY, "9090");
         env::set_var(CONTROLLER_DOMAIN_NAME_KEY, "localhost");
-        env::set_var(CONTROLLER_CERT_FILE_KEY, "../assets/certs/ca.crt");
+        env::set_var(CONTROLLER_CERT_FILE_KEY, "../assets/certs/controller/ca.crt");
     }
 
     let result = service::get_controller_connection_settings();
